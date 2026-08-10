@@ -1,0 +1,22 @@
+databases:
+  - name: valid-video-db
+    databaseName: valid_video_db
+    user: valid_video_user
+    plan: free # Change to "starter" or higher for production use
+    region: oregon # Match this to your web service region
+
+services:
+  - type: web
+    name: valid-video-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free # Change to "starter" or higher for production use
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: valid-video-db
+          property: connectionString
+      - key: PYTHONUNBUFFERED
+        value: "1"

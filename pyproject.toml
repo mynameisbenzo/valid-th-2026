@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "valid-video"
+version = "0.1.0"
+description = "Buckets MP4s into canonical aspect ratios and detects same-creative matches across ratios."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+
+# Core library has zero third-party runtime dependencies for the
+# aspect-ratio/matching/store logic -- everything used there is stdlib.
+# Pillow/imagehash/numpy ARE required, though: they back the actual
+# visual-similarity matching (perceptual hashing, padding detection).
+# The GCS client and ffprobe/ffmpeg themselves stay duck-typed/pluggable
+# (see gcs_signing.py, video_probe.py), so no google-cloud-storage import
+# is needed unless you opt into the "gcs" extra below.
+dependencies = [
+    "Pillow>=10",
+    "imagehash>=4.3",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+gcs = ["google-cloud-storage>=2.10"]
+api = ["fastapi>=0.100", "uvicorn>=0.23", "python-multipart>=0.0.9"]
+dev = ["pytest>=8", "httpx<1"]
+
+[tool.setuptools.packages.find]
+include = ["valid_video*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
