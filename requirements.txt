@@ -1,10 +1,18 @@
-fastapi>=0.110.0
-uvicorn[standard]>=0.28.0
-python-multipart>=0.0.9
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
-sqlalchemy>=2.0.0
-asyncpg>=0.29.0          
-aiosqlite>=0.20.0       
-psycopg2-binary>=2.9.9
-google-cloud-storage>=2.14.0
+# Core library dependencies: everything needed for the actual matching
+# logic (perceptual hashing, padding detection).
+Pillow>=10
+imagehash>=4.3
+numpy>=1.24
+#
+# The GCS client and ffprobe/ffmpeg themselves stay duck-typed/pluggable
+# (see gcs_signing.py, video_probe.py) -- no google-cloud-storage import
+# is required unless you opt into the "gcs" extra:
+#   pip install -e .[gcs]
+#
+# To run the HTTP API, install the "api" extra instead:
+#   pip install -e .[api]
+#
+# ffprobe/ffmpeg themselves are system binaries, not Python packages --
+# install via your OS package manager (e.g. `apt install ffmpeg` on
+# Debian/Ubuntu, `brew install ffmpeg` on macOS), since they ship as
+# part of the ffmpeg distribution.

@@ -70,3 +70,10 @@ class TestProbeDimensions:
 
         with pytest.raises(RuntimeError, match="timed out"):
             probe_dimensions("https://example.com/video.mp4", runner=runner)
+
+    def test_missing_ffprobe_binary_raises_clear_runtime_error(self):
+        def runner(cmd, capture_output, text, timeout):
+            raise FileNotFoundError(2, "The system cannot find the file specified")
+
+        with pytest.raises(RuntimeError, match="ffprobe"):
+            probe_dimensions("video.mp4", runner=runner)

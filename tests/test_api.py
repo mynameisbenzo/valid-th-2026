@@ -123,6 +123,14 @@ def upload_all(client):
     return response.json()
 
 
+class TestIndexPage:
+    def test_serves_html(self, client):
+        response = client.get("/")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        assert "dropzone" in response.text
+
+
 class TestUpload:
     def test_returns_expected_fields_for_each_file(self, client):
         results = upload_all(client)

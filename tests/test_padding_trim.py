@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from valid_video.visual_similarity import frames_similarity, trim_padding
 
@@ -91,4 +91,42 @@ class TestNormalizeFrameHandlesPadding:
         padded_square = pillarboxed(tall_content, canvas_width=400, canvas_height=400)
 
         similarity = frames_similarity(original, padded_square)
+        assert similarity > 0.80
+
+    def test_blurred_replica_padding_still_matches_via_known_aspect_ratio(self):
+        # This is the real bug found via live debugging: real editing tools
+        # (CapCut, InShot, etc.) often pad by pasting a BLURRED, ZOOMED COPY
+        # of the same footage into the side bars -- not a flat/solid color.
+        # That padding still has meaningful pixel variance after blurring
+        # (unlike blurred random noise, which collapses toward flat), so
+        # trim_padding() can't detect it as padding at all. frames_similarity()
+        # must therefore align frames using the videos' own known pixel
+        # dimensions (which directly reflect their real aspect ratio) rather
+        # than relying on pixel-variance-based padding detection.
+        from PIL import ImageDraw
+
+        def real_looking_content(width, height, seed=0):
+            # Large-scale shapes (not per-pixel noise) so blurring preserves
+            # structure, same as blurring an actual video frame would.
+            img = Image.new("RGB", (width, height), (60, 55, 50))
+            draw = ImageDraw.Draw(img)
+            rng = np.random.default_rng(seed)
+            for _ in range(6):
+                x0, y0 = rng.integers(0, width), rng.integers(0, height)
+                w, h = rng.integers(width // 4, width // 2), rng.integers(height // 6, height // 3)
+                color = tuple(int(c) for c in rng.integers(80, 230, size=3))
+                draw.ellipse([x0, y0, x0 + w, y0 + h], fill=color)
+            return img
+
+        tall_content = real_looking_content(200, 400, seed=11)
+
+        # Build a "blurred replica" pillarbox: the side bars are a blurred,
+        # stretched copy of the real content -- textured, not flat.
+        canvas = tall_content.resize((400, 400), Image.LANCZOS)
+        blurred_bg = canvas.filter(ImageFilter.GaussianBlur(8))
+        x = (400 - tall_content.width) // 2
+        blurred_bg.paste(tall_content, (x, 0))
+        padded_with_blurred_replica = blurred_bg
+
+        similarity = frames_similarity(tall_content, padded_with_blurred_replica)
         assert similarity > 0.80

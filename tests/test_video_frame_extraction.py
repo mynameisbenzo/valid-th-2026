@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 import pytest
 from PIL import Image
@@ -41,6 +42,13 @@ class TestProbeDuration:
         runner = make_probe_runner(returncode=1)
         with pytest.raises(RuntimeError):
             probe_duration("missing.mp4", runner=runner)
+
+    def test_missing_ffprobe_binary_raises_clear_runtime_error(self):
+        def runner(cmd, capture_output, text, timeout):
+            raise FileNotFoundError(2, "The system cannot find the file specified")
+
+        with pytest.raises(RuntimeError, match="ffprobe"):
+            probe_duration("video.mp4", runner=runner)
 
 
 def make_extract_runner(image_to_write=None):
@@ -114,4 +122,28 @@ class TestExtractFrame:
                 str(tmp_path / "frame.jpg"),
                 probe_runner=make_probe_runner(),
                 extract_runner=failing_runner,
+            )
+
+    def test_ffmpeg_timeout_propagates_as_runtime_error(self, tmp_path):
+        def timing_out_runner(cmd, capture_output, text, timeout):
+            raise subprocess.TimeoutExpired(cmd=cmd, timeout=timeout)
+
+        with pytest.raises(RuntimeError, match="timed out"):
+            extract_frame(
+                "video.mp4",
+                str(tmp_path / "frame.jpg"),
+                probe_runner=make_probe_runner(),
+                extract_runner=timing_out_runner,
+            )
+
+    def test_missing_ffmpeg_binary_raises_clear_runtime_error(self, tmp_path):
+        def missing_binary_runner(cmd, capture_output, text, timeout):
+            raise FileNotFoundError(2, "The system cannot find the file specified")
+
+        with pytest.raises(RuntimeError, match="ffmpeg"):
+            extract_frame(
+                "video.mp4",
+                str(tmp_path / "frame.jpg"),
+                probe_runner=make_probe_runner(),
+                extract_runner=missing_binary_runner,
             )

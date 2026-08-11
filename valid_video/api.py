@@ -19,6 +19,7 @@ import uuid
 from functools import partial
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import HTMLResponse
 
 from valid_video.aspect_ratio import classify_aspect_ratio, simplify_ratio
 from valid_video.match_service import DEFAULT_MATCH_THRESHOLD, find_matches
@@ -26,6 +27,7 @@ from valid_video.matching import extract_stem
 from valid_video.store import VideoRecord, VideoStore
 from valid_video.video_probe import probe_dimensions
 from valid_video.visual_matching import compare_videos_visual
+from valid_video.web_ui import INDEX_HTML
 
 OTHER_BUCKET = "other"
 OTHER_BUCKET_DISPLAY = "Other"
@@ -60,6 +62,10 @@ def create_app(
     os.makedirs(resolved_upload_dir, exist_ok=True)
 
     compare_fn = partial(compare_videos_visual, probe_runner=probe_runner, extract_runner=extract_runner)
+
+    @app.get("/", response_class=HTMLResponse)
+    def index():
+        return INDEX_HTML
 
     @app.post("/upload")
     def upload(files: list[UploadFile] = File(...)):

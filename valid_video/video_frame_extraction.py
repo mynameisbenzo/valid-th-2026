@@ -26,6 +26,13 @@ def probe_duration(source: str, runner=_subprocess.run, timeout: int = DEFAULT_T
         result = runner(cmd, capture_output=True, text=True, timeout=timeout)
     except _subprocess.TimeoutExpired as exc:
         raise RuntimeError(f"ffprobe timed out probing duration of {source!r}") from exc
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "ffprobe was not found. Install ffmpeg and make sure it's on your "
+            "PATH (e.g. `brew install ffmpeg` on macOS, `apt install ffmpeg` "
+            "on Debian/Ubuntu, or download a build from https://ffmpeg.org/download.html "
+            "on Windows and add its `bin` folder to PATH)."
+        ) from exc
 
     if result.returncode != 0:
         raise RuntimeError(
@@ -71,6 +78,13 @@ def extract_frame(
         result = extract_runner(cmd, capture_output=True, text=True, timeout=timeout)
     except _subprocess.TimeoutExpired as exc:
         raise RuntimeError(f"ffmpeg timed out extracting a frame from {source!r}") from exc
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "ffmpeg was not found. Install ffmpeg and make sure it's on your "
+            "PATH (e.g. `brew install ffmpeg` on macOS, `apt install ffmpeg` "
+            "on Debian/Ubuntu, or download a build from https://ffmpeg.org/download.html "
+            "on Windows and add its `bin` folder to PATH)."
+        ) from exc
 
     if result.returncode != 0:
         raise RuntimeError(

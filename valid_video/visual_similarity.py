@@ -67,6 +67,33 @@ def trim_padding(
     return image.crop((left, top, right + 1, bottom + 1))
 
 
+def crop_to_aspect(image: Image.Image, target_ratio: float) -> Image.Image:
+    """Center-crop `image` down to `target_ratio` (width/height).
+
+    If the image is already at (or narrower than) target_ratio, it's
+    returned unchanged aside from a possible height trim. This is used to
+    align two frames using their *known* aspect ratios -- directly, via
+    math -- rather than trying to detect padding by inspecting pixels,
+    which fails when padding is a blurred/zoomed replica of real content
+    rather than a flat or lightly-blurred color (see frames_similarity).
+    """
+    width, height = image.size
+    current_ratio = width / height
+    if abs(current_ratio - target_ratio) < 1e-6:
+        return image
+
+    if current_ratio > target_ratio:
+        # proportionally wider than target -> crop width (pillarbox case)
+        new_width = round(height * target_ratio)
+        left = (width - new_width) // 2
+        return image.crop((left, 0, left + new_width, height))
+    else:
+        # proportionally taller than target -> crop height (letterbox case)
+        new_height = round(width / target_ratio)
+        top = (height - new_height) // 2
+        return image.crop((0, top, width, top + new_height))
+
+
 def normalize_frame(image: Image.Image, size: int = DEFAULT_NORMALIZED_SIZE) -> Image.Image:
     """Trim padding, center-crop to a square, and resize.
 
@@ -100,5 +127,30 @@ def hash_similarity(
 
 
 def frames_similarity(image_a: Image.Image, image_b: Image.Image) -> float:
-    """Visual similarity of two frames, in [0,1]. 1.0 means identical."""
-    return hash_similarity(compute_phash(image_a), compute_phash(image_b))
+    """Visual similarity of two frames, in [0,1]. 1.0 means identical.
+
+    Two different real-world relationships produce two different aspect
+    ratios, and they need different alignment:
+      - "Padded" (e.g. 9:16 -> 1:1 pillarbox): the content is *rescaled*
+        to fit inside the new canvas, so recovering it requires cropping
+        the wider frame down using the *known* aspect ratio -- pixel-variance
+        padding detection alone fails here when the padding is a blurred
+        replica of real content rather than a flat color (see crop_to_aspect).
+      - "Cropped"/reframed (e.g. 9:16 -> 4:5 via trimming top/bottom): the
+        content is NOT rescaled, just extended/trimmed -- applying the
+        pad-style rescale here would incorrectly shrink content that was
+        never resized, hurting similarity.
+
+    Since we don't know which relationship produced any given pair, both
+    alignment strategies are tried and the higher-scoring one wins.
+    """
+    independent_similarity = hash_similarity(compute_phash(image_a), compute_phash(image_b))
+
+    ratio_a = image_a.width / image_a.height
+    ratio_b = image_b.width / image_b.height
+    target_ratio = min(ratio_a, ratio_b)
+    aligned_a = crop_to_aspect(image_a, target_ratio)
+    aligned_b = crop_to_aspect(image_b, target_ratio)
+    aligned_similarity = hash_similarity(compute_phash(aligned_a), compute_phash(aligned_b))
+
+    return max(independent_similarity, aligned_similarity)
