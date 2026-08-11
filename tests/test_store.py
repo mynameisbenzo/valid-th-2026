@@ -12,6 +12,7 @@ def make_record_kwargs(filename="a_9-16.mp4", ratio_bucket="9:16"):
         aspect_ratio="9:16",
         ratio_bucket=ratio_bucket,
         creative_stem="a",
+        thumbnail_path=f"/tmp/{filename}.thumb.jpg",
     )
 
 
@@ -51,6 +52,7 @@ class TestAdd:
         assert record.ratio_bucket == "4:5"
         assert record.width == 1080
         assert record.height == 1920
+        assert record.thumbnail_path == "/tmp/clip.mp4.thumb.jpg"
 
 
 class TestGet:

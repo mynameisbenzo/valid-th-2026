@@ -143,10 +143,26 @@ class TestUpload:
         assert ugc_9_16["aspect_ratio"] == "9:16"
         assert ugc_9_16["ratio_bucket"] == "9:16"
         assert "video_id" in ugc_9_16
+        assert ugc_9_16["thumbnail_url"] == f"/videos/{ugc_9_16['video_id']}/thumbnail"
 
         cinematic = by_filename[CINEMATIC_OTHER]
         assert cinematic["aspect_ratio"] == "7:3"
         assert cinematic["ratio_bucket"] == "Other"
+
+
+class TestThumbnail:
+    def test_returns_the_extracted_frame_as_jpeg(self, client):
+        results = upload_all(client)
+        video_id = results[0]["video_id"]
+
+        response = client.get(f"/videos/{video_id}/thumbnail")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/jpeg"
+        assert len(response.content) > 0
+
+    def test_unknown_video_id_is_404(self, client):
+        response = client.get("/videos/doesnotexist/thumbnail")
+        assert response.status_code == 404
 
 
 class TestMatch:

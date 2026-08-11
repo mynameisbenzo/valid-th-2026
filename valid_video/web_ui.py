@@ -140,7 +140,12 @@ INDEX_HTML = """<!DOCTYPE html>
     padding: 0.75rem 0.9rem;
     margin-bottom: 0.5rem;
   }
-  .video-card .row1 { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+  .video-card .row1 { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+  .video-card .thumb {
+    width: 56px; height: 56px; object-fit: cover; border-radius: 4px;
+    border: 1px solid var(--border); flex-shrink: 0; background: #0d1015;
+  }
+  .video-card .info { flex: 1; display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; min-width: 0; }
   .video-card .fname {
     font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis;
     white-space: nowrap; max-width: 480px;
@@ -303,8 +308,11 @@ function renderVideoCard(v) {
   card.className = 'video-card';
   card.innerHTML = `
     <div class="row1">
-      <span class="fname" title="${v.filename}">${v.filename}</span>
-      <span class="dims">${v.width}&times;${v.height} &middot; ${v.aspect_ratio}</span>
+      <img class="thumb" src="${v.thumbnail_url || ''}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+      <div class="info">
+        <span class="fname" title="${v.filename}">${v.filename}</span>
+        <span class="dims">${v.width}&times;${v.height} &middot; ${v.aspect_ratio}</span>
+      </div>
     </div>
     <div class="row2">
       <button class="matches-btn">Find matches</button>

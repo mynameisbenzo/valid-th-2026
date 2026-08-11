@@ -26,6 +26,7 @@ class VideoRecord:
     aspect_ratio: str  # exact reduced fraction, e.g. "7:3"
     ratio_bucket: str  # canonical bucket: "9:16" | "1:1" | "4:5" | "16:9" | "other"
     creative_stem: str  # filename-derived grouping key (kept for reference/fallback)
+    thumbnail_path: str | None  # local path to the extracted representative frame (JPEG), or None if extraction failed
 
 
 class VideoStore:
@@ -42,6 +43,7 @@ class VideoStore:
         aspect_ratio: str,
         ratio_bucket: str,
         creative_stem: str,
+        thumbnail_path: str,
     ) -> VideoRecord:
         video_id = self._generate_unique_id()
         record = VideoRecord(
@@ -53,6 +55,7 @@ class VideoStore:
             aspect_ratio=aspect_ratio,
             ratio_bucket=ratio_bucket,
             creative_stem=creative_stem,
+            thumbnail_path=thumbnail_path,
         )
         self._records[video_id] = record
         return record

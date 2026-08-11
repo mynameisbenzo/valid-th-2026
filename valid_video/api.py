@@ -19,12 +19,13 @@ import uuid
 from functools import partial
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from valid_video.aspect_ratio import classify_aspect_ratio, simplify_ratio
 from valid_video.match_service import DEFAULT_MATCH_THRESHOLD, find_matches
 from valid_video.matching import extract_stem
 from valid_video.store import VideoRecord, VideoStore
+from valid_video.video_frame_extraction import extract_frame
 from valid_video.video_probe import probe_dimensions
 from valid_video.visual_matching import compare_videos_visual
 from valid_video.web_ui import INDEX_HTML
@@ -45,6 +46,7 @@ def _serialize(record: VideoRecord) -> dict:
         "aspect_ratio": record.aspect_ratio,
         "ratio_bucket": _display_bucket(record.ratio_bucket),
         "filename": record.filename,
+        "thumbnail_url": f"/videos/{record.video_id}/thumbnail" if record.thumbnail_path else None,
     }
 
 
@@ -83,6 +85,18 @@ def create_app(
             aspect_ratio = simplify_ratio(width, height)
             creative_stem = extract_stem(safe_filename)
 
+            thumbnail_path = os.path.join(dest_dir, "thumbnail.jpg")
+            try:
+                extract_frame(
+                    dest_path, thumbnail_path, probe_runner=probe_runner, extract_runner=extract_runner
+                )
+            except Exception:
+                # A thumbnail is a nice-to-have -- a corrupt/unreadable video
+                # shouldn't fail the whole upload just because we can't
+                # preview it. classify/probe above already succeeded, so we
+                # still have useful metadata even without a thumbnail.
+                thumbnail_path = None
+
             record = store.add(
                 filename=safe_filename,
                 source=dest_path,
@@ -91,6 +105,7 @@ def create_app(
                 aspect_ratio=aspect_ratio,
                 ratio_bucket=ratio_bucket,
                 creative_stem=creative_stem,
+                thumbnail_path=thumbnail_path,
             )
             results.append(_serialize(record))
         return results
@@ -112,6 +127,15 @@ def create_app(
             bucket_filter = OTHER_BUCKET if ratio.lower() == "other" else ratio
         records = store.list(ratio_bucket=bucket_filter)
         return [_serialize(r) for r in records]
+
+    @app.get("/videos/{video_id}/thumbnail")
+    def get_thumbnail(video_id: str):
+        record = store.get(video_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail=f"unknown video_id: {video_id!r}")
+        if not record.thumbnail_path or not os.path.exists(record.thumbnail_path):
+            raise HTTPException(status_code=404, detail="thumbnail not available for this video")
+        return FileResponse(record.thumbnail_path, media_type="image/jpeg")
 
     @app.delete("/videos/{video_id}")
     def delete_video(video_id: str):

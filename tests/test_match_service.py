@@ -11,6 +11,7 @@ def add(store, filename, ratio_bucket, stem="stem"):
         aspect_ratio="1:1",
         ratio_bucket=ratio_bucket,
         creative_stem=stem,
+        thumbnail_path=f"/tmp/{filename}.thumb.jpg",
     )
 
 
